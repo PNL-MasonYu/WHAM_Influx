@@ -1,3 +1,4 @@
+from fileinput import close
 import os
 import serial
 import time
@@ -5,15 +6,19 @@ import csv
 import traceback
 import concurrent.futures
 
+from ssh_logging import remote_logging
 from influxdb_client import InfluxDBClient, ReturnStatement
 from influxdb_client.client.write_api import SYNCHRONOUS
 from influxdb_client.client import write_api
 
-n_row = 0
+def close_open_port(port):
+    if port.is_open:
+        port.close()
 
 def serial_set_up():
     # Setting up all the serial ports
     # Returns a list of ports that are opened
+    global all_ports
     all_ports = {}
     print("Attempting to open all serial ports")
     # Lakeshore temperature monitor
@@ -23,11 +28,13 @@ def serial_set_up():
     ser_lakeshore.parity = serial.PARITY_ODD
     ser_lakeshore.bytesize = serial.SEVENBITS
     ser_lakeshore.timeout=0.5
-    if not ser_lakeshore.is_open:
-        try:
-            ser_lakeshore.open()
-        except:
-            log_error(err_file, "Failed to open Lakeshore temperature monitor port " + ser_lakeshore.port)
+    close_open_port(ser_lakeshore)
+    try:
+        ser_lakeshore.open()
+    except:
+        log_error(err_file, "Failed to open Lakeshore temperature monitor port " + ser_lakeshore.port)
+        exception_details = traceback.format_exc()
+        log_error(err_file, exception_details)
     all_ports["lakeshore"] = ser_lakeshore
 
     # HRC-100 Helium recondenser controller serial port
@@ -35,17 +42,19 @@ def serial_set_up():
     ser_recondenser.baudrate = 9600
     ser_recondenser.port = "COM14"
     ser_recondenser.timeout = 0.5
-    if not ser_recondenser.is_open:
-        try:
-            ser_recondenser.open()
-            # Skip through the initialization screen from the HRC-100 and get into monitor mode
-            ser_recondenser.write(bytes("\n", "ASCII"))
-            time.sleep(1)
-            ser_recondenser.write(bytes("t\n", "ASCII"))
-            # Clear serial buffer
-            ser_recondenser.readlines()
-        except:
-            log_error(err_file, "Failed to open HRC-100 recondenser controller serial port " + ser_recondenser.port)
+    close_open_port(ser_recondenser)
+    try:
+        ser_recondenser.open()
+        # Skip through the initialization screen from the HRC-100 and get into monitor mode
+        ser_recondenser.write(bytes("\n", "ASCII"))
+        time.sleep(1)
+        ser_recondenser.write(bytes("t\n", "ASCII"))
+        # Clear serial buffer
+        ser_recondenser.readlines()
+    except:
+        log_error(err_file, "Failed to open HRC-100 recondenser controller serial port " + ser_recondenser.port)
+        exception_details = traceback.format_exc()
+        log_error(err_file, exception_details)
     all_ports["recondenser"] = ser_recondenser
 
     # PM31 Gauge Controller (Main chamber)
@@ -54,11 +63,13 @@ def serial_set_up():
     ser_PM31.port = "COM13"
     ser_PM31.timeout = 0.5
     ser_PM31.parity = serial.PARITY_NONE
-    if not ser_PM31.is_open:
-        try:
-            ser_PM31.open()
-        except:
-            log_error(err_file, "Failed to open PM31 Gauge Controller serial port " + ser_PM31.port)
+    close_open_port(ser_PM31)
+    try:
+        ser_PM31.open()
+    except:
+        log_error(err_file, "Failed to open PM31 Gauge Controller serial port " + ser_PM31.port)
+        exception_details = traceback.format_exc()
+        log_error(err_file, exception_details)
     all_ports["PM31"] = ser_PM31
 
     # American Magnetics Model 1700 liquid level instrument
@@ -68,26 +79,35 @@ def serial_set_up():
     ser_1700.parity = serial.PARITY_NONE
     ser_1700.stopbits = serial.STOPBITS_ONE
     ser_1700.bytesize = serial.EIGHTBITS
-    if not ser_1700.is_open:
-        try:
-            ser_1700.open()
-            """
-            # Set the unit of measurement to be %
-            ser_1700.write(bytes("CONFigure:N2:UNIT 0\r", "ASCII"))
-            time.sleep(0.5)
-            ser_1700.readline()
-            ser_1700.write(bytes("CONFigure:HE:UNIT 0\r", "ASCII"))
-            time.sleep(0.5)
-            ser_1700.readline()
-            """
-        except:
-            log_error(err_file, "Failed to open American Magnetics 1700 liquid level instrument port " + ser_1700.port)
+    ser_1700.timeout = 0.5
+    close_open_port(ser_PM31)
+    try:
+        ser_1700.open()
+        """
+        # Set the unit of measurement to be %
+        ser_1700.write(bytes("CONFigure:N2:UNIT 0\r", "ASCII"))
+        time.sleep(0.5)
+        ser_1700.readline()
+        ser_1700.write(bytes("CONFigure:HE:UNIT 0\r", "ASCII"))
+        time.sleep(0.5)
+        ser_1700.readline()
+        """
+    except:
+        log_error(err_file, "Failed to open American Magnetics 1700 liquid level instrument port " + ser_1700.port)
+        exception_details = traceback.format_exc()
+        log_error(err_file, exception_details)
     all_ports["AM1700"] = ser_1700
 
-    print(all_ports)
     return all_ports
 
-def read_Lakeshore_Kelvin(port):
+def michael_logging_setup():
+    # Setting up connection to remote computers that are logging data into files
+    michael = remote_logging()
+    michael.connect()
+    return michael
+
+def read_Lakeshore_Kelvin(port_key):
+    port = all_ports[port_key]
     port.write(bytes("KRDG? 0\n", "ASCII"))
     data = str(port.readlines()[0])[2:-5].split(',')
     temps = []
@@ -139,7 +159,8 @@ def read_Extorr_RGA(dir):
         time.sleep(10)
         return
 
-def read_recondenser_controller(port):
+def read_recondenser_controller(port_key):
+    port = all_ports[port_key]
     # Reads the recondenser controller heater power and temperature monitor
     data = str(port.readline())
     #print(data)
@@ -150,7 +171,8 @@ def read_recondenser_controller(port):
             empty_counter += 1
             time.sleep(0.5)
             data = str(port.readline())
-            # If the controller does not respond within 10 seconds, send a command to enable monitor mode and break
+            # If the controller does not respond within 10 seconds, 
+            # send a command to enable monitor mode and break
             if empty_counter > 20:
                 port.write(bytes("t\n", "ASCII"))
                 #print(port.readlines())
@@ -166,7 +188,8 @@ def read_recondenser_controller(port):
     else:
         return 
 
-def read_vacuum_pressure(port):
+def read_vacuum_pressure(port_key):
+    port = all_ports[port_key]
     # Reads the PM31 gauge controller pressure output from channel 1
     port.write(bytes("MESr PM1\r", "ASCII"))
     # PM31 takes maximum of 500 ms to return a result
@@ -179,14 +202,20 @@ def read_vacuum_pressure(port):
     else:
         return
 
-def read_gyrotron_lvl(port):
+def read_gyrotron_lvl(port_key):
+    port = all_ports[port_key]
     # First clear the buffer of any data
     port.reset_input_buffer()
 
     # Reads the gyrotron nitrogen liquid levels
     port.write(bytes("MEASure:N2:LEVel?\r", "ASCII"))
     time.sleep(0.5)
-    data = str(port.readline()).split("\\")
+    try: 
+        data = str(port.readline()).split("\\")
+        # Try to reopen the serial port if something happens 
+    except:
+        port.close()
+        port.open()
     print(data)
     msg = []
     if len(data[0]) > 3:
@@ -228,13 +257,17 @@ def persistent_write_to_db(write_api, bucket, read_function, arg):
         try:
             result = read_function(arg)
             # Check that the read function has actually returned something with active instruments
-            if not result == None:
-                if len(result) > 0:
-                    write_api.write(bucket, org, result)
-            else:
+            if result == None:
                 log_detail = "No results returned from " + read_function.__name__
                 log_error(err_file, log_detail)
 
+            elif result == 0:
+            # This is returned if the function is reading from a remote location and there's nothing new
+                pass
+                
+            elif len(result) > 0:
+                write_api.write(bucket, org, result)
+            
         except KeyboardInterrupt:
             print("logging ended")
             break
@@ -242,11 +275,12 @@ def persistent_write_to_db(write_api, bucket, read_function, arg):
             # writing error to csv file, timeout to prevent filling the hard drive
             exception_details = traceback.format_exc()
             log_error(err_file, exception_details)
-            time.sleep(15)
-            # It should not be necessary to pass the ports dictionary back to the executors because they should have stayed the same
+            # Just close and open all the serial ports to see if the issue will fix itself
+            time.sleep(3)
+            #for port in all_ports.items():
+                #close_open_port(port)
             serial_set_up()
-            pass
-
+            
 def log_error(err_file, exception_details):
     with open(err_file, 'a') as csvfile: 
         csvwriter = csv.writer(csvfile)
@@ -260,16 +294,21 @@ def write_to_DB(write_api):
     """
     Write to the InfluxDB by starting threads
     """
-    all_ports = serial_set_up()
+    serial_set_up()
+    michael = michael_logging_setup()
+    michael_controlfile = "/mnt/c/Users/WHAMuser/Documents/Data Logging/Control_System_Data.csv"
+    michael_shotfile = "/mnt/c/Users/WHAMuser/Documents/Data Logging/shot_data.csv"
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
         # Comment out things that does not need to be logged
-
-        executor.submit(persistent_write_to_db, write_api, "Helium", read_Lakeshore_Kelvin, all_ports["lakeshore"])
+        
+        executor.submit(persistent_write_to_db, write_api, "Helium", read_Lakeshore_Kelvin, "lakeshore")
         executor.submit(persistent_write_to_db, write_api, "Helium", read_Cryomech_Compressor, ".\CPTLog.txt")
         #executor.submit(persistent_write_to_db, write_api, "Vacuum", read_Extorr_RGA, "E:\RGALogs")
-        #executor.submit(persistent_write_to_db, write_api, "Helium", read_recondenser_controller, all_ports["recondenser"])
-        #executor.submit(persistent_write_to_db, write_api, "Vacuum", read_vacuum_pressure, all_ports["PM31"])
-        executor.submit(persistent_write_to_db, write_api, "Helium", read_gyrotron_lvl, all_ports["AM1700"])
+        #executor.submit(persistent_write_to_db, write_api, "Helium", read_recondenser_controller, "recondenser")
+        #executor.submit(persistent_write_to_db, write_api, "Vacuum", read_vacuum_pressure, "PM31")
+        executor.submit(persistent_write_to_db, write_api, "Helium", read_gyrotron_lvl, "AM1700")
+        executor.submit(persistent_write_to_db, write_api, "Control_System", michael.read_michael_data, michael_controlfile)
+        executor.submit(persistent_write_to_db, write_api, "Control_System", michael.read_shot_data, michael_shotfile)
 
 if __name__ == '__main__':
 
