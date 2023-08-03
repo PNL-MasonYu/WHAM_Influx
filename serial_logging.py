@@ -1,46 +1,77 @@
-from fileinput import close
-import os
+import os, sys
 import serial
 import time
 import csv
 import traceback
-import concurrent.futures
+import logging
+from telnetlib import Telnet
 
 from ssh_logging import remote_logging
 from influxdb_client import InfluxDBClient, ReturnStatement
 from influxdb_client.client.write_api import SYNCHRONOUS
 from influxdb_client.client import write_api
 
+def log_error(exception_details):
+    current_time = time.localtime()
+    logging.info(time.strftime("%Y %m %d %H:%M:%S", current_time))
+    logging.debug([exception_details])
+    return
+
 def close_open_port(port):
     if port.is_open:
         port.close()
+        
+def telnet_client(host: str, port: int, command:str):
+    tn = Telnet(host, port)
+    #print(f"connected to ({host}, {port})")
+    command = bytes(command, "ASCII")
+    tn.write(command)
+    time.sleep(1)
+    data = tn.read_eager()
+    output = data.decode('ascii').strip()
+    tn.close()
+    time.sleep(1)
+    return output
+    
 
 def serial_set_up():
     # Setting up all the serial ports
     # Returns a list of ports that are opened
     global all_ports
     all_ports = {}
-    print("Attempting to open all serial ports")
+    logging.info("Attempting to open all serial ports")
     # Lakeshore temperature monitor
     ser_lakeshore = serial.Serial()
-    ser_lakeshore.baudrate = 9600
-    ser_lakeshore.port = "COM12"
+    ser_lakeshore.baudrate = 1200
+    ser_lakeshore.port = "COM4"
     ser_lakeshore.parity = serial.PARITY_ODD
     ser_lakeshore.bytesize = serial.SEVENBITS
-    ser_lakeshore.timeout=0.5
+    ser_lakeshore.stopbits = serial.STOPBITS_ONE
+    ser_lakeshore.timeout=10
+    #ser_lakeshore.inter_byte_timeout = 1
+    #ser_lakeshore.rtscts = True
+    #ser_lakeshore.dsrdtr = True
+    """
     close_open_port(ser_lakeshore)
     try:
         ser_lakeshore.open()
     except:
-        log_error(err_file, "Failed to open Lakeshore temperature monitor port " + ser_lakeshore.port)
+        log_error("Failed to open Lakeshore temperature monitor port " + ser_lakeshore.port)
         exception_details = traceback.format_exc()
-        log_error(err_file, exception_details)
+        log_error(exception_details)
+    
+    # Send the instrument a line break, wait 100ms, and clear the input buffer so that
+    # any leftover communications from a prior session don't gum up the works
+    ser_lakeshore.write(b'\n')
+    time.sleep(0.1)
+    ser_lakeshore.reset_input_buffer()
+    """
     all_ports["lakeshore"] = ser_lakeshore
-
+    
     # HRC-100 Helium recondenser controller serial port
     ser_recondenser = serial.Serial()
     ser_recondenser.baudrate = 9600
-    ser_recondenser.port = "COM14"
+    ser_recondenser.port = "COM2"
     ser_recondenser.timeout = 0.5
     close_open_port(ser_recondenser)
     try:
@@ -52,68 +83,135 @@ def serial_set_up():
         # Clear serial buffer
         ser_recondenser.readlines()
     except:
-        log_error(err_file, "Failed to open HRC-100 recondenser controller serial port " + ser_recondenser.port)
+        log_error("Failed to open HRC-100 recondenser controller serial port " + ser_recondenser.port)
         exception_details = traceback.format_exc()
-        log_error(err_file, exception_details)
+        log_error(exception_details)
     all_ports["recondenser"] = ser_recondenser
-
+    """
     # PM31 Gauge Controller (Main chamber)
     ser_PM31 = serial.Serial()
     ser_PM31.baudrate = 2400
-    ser_PM31.port = "COM13"
+    ser_PM31.port = "COM5"
     ser_PM31.timeout = 0.5
     ser_PM31.parity = serial.PARITY_NONE
     close_open_port(ser_PM31)
     try:
         ser_PM31.open()
     except:
-        log_error(err_file, "Failed to open PM31 Gauge Controller serial port " + ser_PM31.port)
+        log_error("Failed to open PM31 Gauge Controller serial port " + ser_PM31.port)
         exception_details = traceback.format_exc()
-        log_error(err_file, exception_details)
+        log_error(exception_details)
     all_ports["PM31"] = ser_PM31
-
+    """
     # American Magnetics Model 1700 liquid level instrument
     ser_1700 = serial.Serial()
-    ser_1700.baudrate = 115200
-    ser_1700.port = "COM10"
+    ser_1700.baudrate = 300
+    ser_1700.port = "COM4"
     ser_1700.parity = serial.PARITY_NONE
     ser_1700.stopbits = serial.STOPBITS_ONE
     ser_1700.bytesize = serial.EIGHTBITS
     ser_1700.timeout = 0.5
-    close_open_port(ser_PM31)
     try:
         ser_1700.open()
-        """
+        
         # Set the unit of measurement to be %
         ser_1700.write(bytes("CONFigure:N2:UNIT 0\r", "ASCII"))
         time.sleep(0.5)
-        ser_1700.readline()
+        print(ser_1700.readline().decode("ASCII"))
         ser_1700.write(bytes("CONFigure:HE:UNIT 0\r", "ASCII"))
         time.sleep(0.5)
-        ser_1700.readline()
-        """
+        print(ser_1700.readline())
+        
     except:
-        log_error(err_file, "Failed to open American Magnetics 1700 liquid level instrument port " + ser_1700.port)
+        log_error("Failed to open American Magnetics 1700 liquid level instrument port " + ser_1700.port)
         exception_details = traceback.format_exc()
-        log_error(err_file, exception_details)
+        log_error(exception_details)
     all_ports["AM1700"] = ser_1700
 
+    # LN2 Dewar Scale
+    ser_scale = serial.Serial()
+    ser_scale.baudrate = 9600
+    ser_scale.port = "COM6"
+    ser_scale.parity = serial.PARITY_ODD
+    ser_scale.stopbits = serial.STOPBITS_ONE
+    ser_scale.bytesize = serial.SEVENBITS
+    ser_scale.timeout = 0.5
+    try:
+        ser_scale.open()
+    except:
+        log_error("Failed to open LN2 Scale Serial port " + ser_scale.port)
+        exception_details = traceback.format_exc()
+        log_error(exception_details)
+    all_ports["LN2_SCALE"] = ser_scale
     return all_ports
 
 def michael_logging_setup():
     # Setting up connection to remote computers that are logging data into files
-    michael = remote_logging()
-    michael.connect()
-    return michael
+    #michael = remote_logging()
+    #michael.connect()
+    #return michael
+    return 0
+
+def read_LN2_scale(port_key):
+    port = all_ports[port_key]
+    data = str(port.readline())
+    if data[2] == "w":
+        weight_str = data.split("   ")[-1].split("lb")[0]
+        try:
+            weight_lb = float(weight_str)
+            print(data)
+        except:
+            print(data)
+            port.reset_input_buffer()
+            return
+    else: return
+    weight = "LN2_scale,sensor=lb weight={:}".format(weight_lb)
+    time.sleep(0.5)
+    return weight
+
+def read_Lakeshore_Telnet(IP="192.168.1.87"):
+    LN2_lvl = telnet_client(IP, 7180, "MEASure:N2:LEVel?\r")
+    HE_lvl = telnet_client(IP, 7180, "MEASure:HE:LEVel?\r")
+
+    msg = []
+    msg.append("AMI_1700,sensor=N2_lvl n2_percent=" + LN2_lvl)
+    msg.append("AMI_1700,sensor=HE_lvl he_percent=" + HE_lvl)
+    return msg
+
 
 def read_Lakeshore_Kelvin(port_key):
-    port = all_ports[port_key]
-    port.write(bytes("KRDG? 0\n", "ASCII"))
-    data = str(port.readlines()[0])[2:-5].split(',')
+    lakeshore_port = all_ports[port_key]
+    time.sleep(1)
+    #lakeshore_port.reset_output_buffer()
+    command = 'KRDG? 3\r\n'.encode("ASCII")
+    lakeshore_port.write(command)
+    #print(lakeshore_port.get_settings())
+    #lakeshore_port.write(bytes('KRDG? 3\r\n'))
+    #lakeshore_port.flush()
+    #lakeshore_port.rts = True
+    #lakeshore_port.dtr = True
+    serial_input = lakeshore_port.readline()
+    print(serial_input)
+    data = str(serial_input)[2:-5].split(',')
+    """
+    try:
+        serial_input = lakeshore_port.readline()
+        print(serial_input)
+
+    except:
+        exception_details = traceback.format_exc()
+        log_error(exception_details)
+        #lakeshore_port.close()
+        time.sleep(5)
+        #lakeshore_port.open()
+        
+        return
+    """
     temps = []
+    #print(data)
     for n in range(len(data)):
-        temps.append("temperature,sensor=ch{:} temp={:}".format(n+1,float(data[n])))
-    time.sleep(10)
+        temps.append("temperature,sensor=ch{:} temp={:}".format(n+1,float(data[n]))) 
+    
     return temps
 
 def read_Cryomech_Compressor(file):
@@ -128,8 +226,8 @@ def read_Cryomech_Compressor(file):
         for n in range(1, len(row)):
             latest_status.append("CP1000_Compressor,sensor="+ heading[n].replace(" ", "") + " data_field={:}".format(float(row[n])))
         CPTLog.close()
-        #print(latest_status)
-    time.sleep(10)
+        #logging.info(latest_status)
+    time.sleep(1)
     return latest_status
 
 def read_Extorr_RGA(dir):
@@ -156,7 +254,7 @@ def read_Extorr_RGA(dir):
                           " intensity=" + str(float(last_row[2])))
         #print(latest_data)
         RGALog.close()
-        time.sleep(10)
+        time.sleep(1)
         return
 
 def read_recondenser_controller(port_key):
@@ -206,17 +304,22 @@ def read_gyrotron_lvl(port_key):
     port = all_ports[port_key]
     # First clear the buffer of any data
     port.reset_input_buffer()
-
+    
     # Reads the gyrotron nitrogen liquid levels
     port.write(bytes("MEASure:N2:LEVel?\r", "ASCII"))
     time.sleep(0.5)
     try: 
         data = str(port.readline()).split("\\")
+        #print(data)
         # Try to reopen the serial port if something happens 
     except:
+        exception_details = traceback.format_exc()
+        log_error(exception_details)
         port.close()
+        time.sleep(10)
         port.open()
-    print(data)
+        return
+    
     msg = []
     if len(data[0]) > 3:
         N2_lvl = data[0].split('\'')[-1].strip()
@@ -226,6 +329,7 @@ def read_gyrotron_lvl(port_key):
     port.write(bytes("MEASure:HE:LEVel?\r", "ASCII"))
     time.sleep(0.5)
     data = str(port.readline()).split("\\")
+    print(data)
     if len(data[0]) > 3:
         HE_lvl = data[0].split('\'')[-1].strip()
         msg.append("AMI_1700,sensor=HE_lvl he_percent=" + HE_lvl)
@@ -245,90 +349,8 @@ def read_gyrotron_lvl(port_key):
     if len(data[0]) > 3:
         HE_mA = data[0].split('\'')[-1].strip()
         msg.append("AMI_1700,sensor=HE_lvl he_mA=" + HE_mA)
-    
+    #print(msg)
     if len(msg) > 0:
         return msg
     else:
         return
-        
-def persistent_write_to_db(write_api, bucket, read_function, arg):
-    # Persistently write data to the database in bucket after executing the read_function
-    while True:
-        try:
-            result = read_function(arg)
-            # Check that the read function has actually returned something with active instruments
-            if result == None:
-                log_detail = "No results returned from " + read_function.__name__
-                log_error(err_file, log_detail)
-
-            elif result == 0:
-            # This is returned if the function is reading from a remote location and there's nothing new
-                pass
-                
-            elif len(result) > 0:
-                write_api.write(bucket, org, result)
-            
-        except KeyboardInterrupt:
-            print("logging ended")
-            break
-        except:
-            # writing error to csv file, timeout to prevent filling the hard drive
-            exception_details = traceback.format_exc()
-            log_error(err_file, exception_details)
-            # Just close and open all the serial ports to see if the issue will fix itself
-            time.sleep(3)
-            #for port in all_ports.items():
-                #close_open_port(port)
-            serial_set_up()
-            
-def log_error(err_file, exception_details):
-    with open(err_file, 'a') as csvfile: 
-        csvwriter = csv.writer(csvfile)
-        current_time = time.localtime()
-        csvwriter.writerow([time.strftime("%Y %m %d %H:%M:%S", current_time)])
-        csvwriter.writerow([exception_details])
-    return
-
-
-def write_to_DB(write_api):
-    """
-    Write to the InfluxDB by starting threads
-    """
-    serial_set_up()
-    michael = michael_logging_setup()
-    michael_controlfile = "/mnt/c/Users/WHAMuser/Documents/Data Logging/Control_System_Data.csv"
-    michael_shotfile = "/mnt/c/Users/WHAMuser/Documents/Data Logging/shot_data.csv"
-    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-        # Comment out things that does not need to be logged
-        
-        executor.submit(persistent_write_to_db, write_api, "Helium", read_Lakeshore_Kelvin, "lakeshore")
-        executor.submit(persistent_write_to_db, write_api, "Helium", read_Cryomech_Compressor, ".\CPTLog.txt")
-        #executor.submit(persistent_write_to_db, write_api, "Vacuum", read_Extorr_RGA, "E:\RGALogs")
-        #executor.submit(persistent_write_to_db, write_api, "Helium", read_recondenser_controller, "recondenser")
-        #executor.submit(persistent_write_to_db, write_api, "Vacuum", read_vacuum_pressure, "PM31")
-        executor.submit(persistent_write_to_db, write_api, "Helium", read_gyrotron_lvl, "AM1700")
-        executor.submit(persistent_write_to_db, write_api, "Control_System", michael.read_michael_data, michael_controlfile)
-        executor.submit(persistent_write_to_db, write_api, "Control_System", michael.read_shot_data, michael_shotfile)
-
-if __name__ == '__main__':
-
-    start_time = time.localtime()
-    err_file = "error_log_" + time.strftime("%Y_%m_%d_%H-%M", start_time) + ".csv"
-
-    # The token is unique to WHAM AWS service, do not delete it
-    token = "4AMxSRRqZ-F5y35r7WFM9kyU9oDL50AfyVfcB2lAKrZUDeRHaEZMRPjn9K2TIUfL4iMW4Os7H2OfhKFemU1S1w=="
-    org = "WHAM_Influx"
-
-    # This token is for the localhost DB
-    #token = "1S49cxWeukQNzk-M0No48Sz1PocbtgSf2Q8l9w5C2j17nj7Q4yoj-cV0UEeSGam3GP46oywU7DyEfauLoPnEwQ=="
-    
-    # This is for the DB running on Andrew
-    #token = "VgX10ZPPxNYECSjl9qlZVOqMm0FU4DZmfkzED9qwevwTR_--MpNvx0LSFGOp87rCc9Kmq2fyuNz9Dcsoe3RRNQ=="
-    #org = "WHAM"
-
-    client = InfluxDBClient(url="https://us-east-1-1.aws.cloud2.influxdata.com", token=token, org=org)
-    #client = InfluxDBClient(url="http://localhost:8086", token=token, org=org)
-    #client = InfluxDBClient(url="http://andrew.psl.wisc.edu:8080", token=token, org=org)
-
-    write_api = client.write_api(write_options=SYNCHRONOUS)
-    write_to_DB(write_api)
