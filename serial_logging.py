@@ -1,4 +1,4 @@
-import os, sys
+import os
 import serial
 import time
 import csv
@@ -169,7 +169,7 @@ def read_LN2_scale(port_key):
     time.sleep(0.5)
     return weight
 
-def read_Lakeshore_Telnet(IP="192.168.1.87"):
+def read_Lakeshore_Telnet(IP="192.168.0.87"):
     LN2_lvl = telnet_client(IP, 7180, "MEASure:N2:LEVel?\r")
     HE_lvl = telnet_client(IP, 7180, "MEASure:HE:LEVel?\r")
 
@@ -354,3 +354,31 @@ def read_gyrotron_lvl(port_key):
         return msg
     else:
         return
+    
+def read_maxigauge(IP='192.168.130.195'):
+    tn = Telnet(IP, 8000)
+    data = b''
+    msg = []
+    for gauge_n in range(1, 7):
+        command = bytes('PR' + str(gauge_n) + '\r', 'ASCII')
+        tn.write(command)
+        time.sleep(0.1)
+        data = tn.read_eager()
+        
+        if data == b'\x06\r\n': #ACQ
+
+            tn.write(b'\x05')   #ENQ
+            time.sleep(0.1)
+            data = tn.read_eager()
+            if not data == b'':
+                pressure_str = data.decode("ASCII").strip("\r\n").split(",")[1]
+                pressure = float(pressure_str)
+                #print(pressure)
+                msg.append("MAXIGAUGE_TPG366,sensor=CH_" + str(gauge_n) + " PRESSURE=" + str(pressure))
+
+        else:
+            #print(data)
+            log_error("Maxigauge failed to respond to " + str(command))
+    tn.close()
+    time.sleep(0.2)
+    return msg
