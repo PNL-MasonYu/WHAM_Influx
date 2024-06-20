@@ -3,6 +3,7 @@ import concurrent.futures
 import logging
 
 from serial_logging import *
+from maxigauge_pressure_reader import maxigauge
 
 from ssh_logging import remote_logging
 from influxdb_client import InfluxDBClient, ReturnStatement
@@ -44,24 +45,26 @@ def write_to_DB(executor, write_api, org):
     """
     Write to the InfluxDB by starting threads
     """
-    
     #michael = michael_logging_setup()
     #michael_controlfile = "/mnt/c/Users/WHAMuser/Documents/Data Logging/Control_System_Data.csv"
     #michael_shotfile = "/mnt/c/Users/WHAMuser/Documents/Data Logging/shot_data.csv"
     
     # Comment out things that does not need to be logged
     
-    #executor.submit(persistent_write_to_db, write_api, "Helium", org, read_Lakeshore_Kelvin, "lakeshore")
-    #executor.submit(persistent_write_to_db, write_api, "Helium", org, read_Cryomech_Compressor, 'C:/Users/WHAMuser/Desktop/Influxdb Data Logging/CPTLog.txt')
-    executor.submit(persistent_write_to_db, write_api, "Helium", org, read_LN2_scale, 'LN2_SCALE')
+    
+    #executor.submit(persistent_write_to_db, write_api, "helium", org, read_Lakeshore_Kelvin, "lakeshore")
+    #executor.submit(persistent_write_to_db, write_api, "helium", org, read_Cryomech_Compressor, 'C:/Users/WHAMuser/Desktop/Influxdb Data Logging/CPTLog.txt')
+    #executor.submit(persistent_write_to_db, write_api, "helium", org, read_LN2_scale, 'LN2_SCALE')
     #executor.submit(persistent_write_to_db, write_api, "Vacuum", org, read_Extorr_RGA, "E:\RGALogs")
-    #executor.submit(persistent_write_to_db, write_api, "Helium", org, read_recondenser_controller, "recondenser")
+    #executor.submit(persistent_write_to_db, write_api, "helium", org, read_recondenser_controller, "recondenser")
     #executor.submit(persistent_write_to_db, write_api, "Vacuum", org, read_vacuum_pressure, "PM31")
-    #executor.submit(persistent_write_to_db, write_api, "Helium", org, read_gyrotron_lvl, "AM1700")
-    executor.submit(persistent_write_to_db, write_api, "Helium", org, read_Lakeshore_Telnet, "192.168.0.87")
+    executor.submit(persistent_write_to_db, write_api, "helium", org, read_gyrotron_lvl, "AM1700")
+    #executor.submit(persistent_write_to_db, write_api, "helium", org, read_Lakeshore_Telnet, "192.168.130.210")
     #executor.submit(persistent_write_to_db, write_api, "Control_System", org, michael.read_michael_data, michael_controlfile)
     #executor.submit(persistent_write_to_db, write_api, "Control_System", org, michael.read_shot_data, michael_shotfile)
-    executor.submit(persistent_write_to_db, write_api, "Helium", org, read_maxigauge, "192.168.130.195")
+    executor.submit(persistent_write_to_db, write_api, "Vacuum", org, read_maxigauge, "192.168.130.195")
+    #executor.submit(persistent_write_to_db, write_api, "helium", org, read_ADAM_6015, "192.168.130.125")
+    
     return
 
 if __name__ == '__main__':
@@ -75,21 +78,23 @@ if __name__ == '__main__':
     cloud_org = "WHAM_Influx"
 
     # This token is for the localhost DB
-    local_token = "1S49cxWeukQNzk-M0No48Sz1PocbtgSf2Q8l9w5C2j17nj7Q4yoj-cV0UEeSGam3GP46oywU7DyEfauLoPnEwQ=="
-    local_org = "WHAM"
+    #local_token = "1S49cxWeukQNzk-M0No48Sz1PocbtgSf2Q8l9w5C2j17nj7Q4yoj-cV0UEeSGam3GP46oywU7DyEfauLoPnEwQ=="
+    #local_org = "WHAM"
 
     # This is for the DB running on Andrew
-    #token = "VgX10ZPPxNYECSjl9qlZVOqMm0FU4DZmfkzED9qwevwTR_--MpNvx0LSFGOp87rCc9Kmq2fyuNz9Dcsoe3RRNQ=="
-    #org = "WHAM"
+    token = "_h8EHu5V5jF_u9dHjqHPH4eL1uDYOY25auKPTa9Z9e0R_jJMHhvqbhlcxQfeq9QG2KsJnlvurS1IsSVym5D7UA=="
+    andrew_org = "WHAM"
 
-    cloud_client = InfluxDBClient(url="https://us-east-1-1.aws.cloud2.influxdata.com", token=cloud_token, org=cloud_org)
-    local_client = InfluxDBClient(url="http://localhost:8086", token=local_token, org=local_org)
-    #client = InfluxDBClient(url="http://andrew.psl.wisc.edu:8080", token=token, org=org)
+    #cloud_client = InfluxDBClient(url="https://us-east-1-1.aws.cloud2.influxdata.com", token=cloud_token, org=cloud_org)
+    #local_client = InfluxDBClient(url="http://localhost:8086", token=local_token, org=local_org)
+    andrew_client = InfluxDBClient(url="http://andrew.psl.wisc.edu:8086", token=token, org=andrew_org)
 
-    cloud_write_api = cloud_client.write_api(write_options=SYNCHRONOUS)
-    local_write_api = local_client.write_api(write_options=SYNCHRONOUS)
+    #cloud_write_api = cloud_client.write_api(write_options=SYNCHRONOUS)
+    #local_write_api = local_client.write_api(write_options=SYNCHRONOUS)
+    andrew_write_api = andrew_client.write_api(write_options=SYNCHRONOUS)
 
     serial_set_up()
     with concurrent.futures.ThreadPoolExecutor(max_workers=18) as executor:
         #write_to_DB(executor, cloud_write_api, cloud_org)
-        write_to_DB(executor, local_write_api, local_org)
+        #write_to_DB(executor, local_write_api, local_org)
+        write_to_DB(executor, andrew_write_api, andrew_org)

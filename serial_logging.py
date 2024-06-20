@@ -5,6 +5,7 @@ import csv
 import traceback
 import logging
 from telnetlib import Telnet
+from pymodbus.client import ModbusTcpClient
 
 from ssh_logging import remote_logging
 from influxdb_client import InfluxDBClient, ReturnStatement
@@ -152,6 +153,21 @@ def michael_logging_setup():
     #return michael
     return 0
 
+def read_ADAM_6015(ip):
+    client = ModbusTcpClient(ip)
+    raw_temps = [0] * 7
+    scaled_temps = [0.0] * 7
+    msg = []
+    for reg in [0,1,2,3,4,5,6]:
+        raw_temps[reg] = client.read_input_registers(address=reg, count=1).registers[0]
+        scaled_temps[reg] = raw_temps[reg] / 65535 * 100
+        msg.append("ADAM_6015,sensor=ch{:} temp_celsius={:.3f}".format(reg, scaled_temps[reg]))
+    #print(raw_temps)
+    print(msg)
+    time.sleep(1)
+    return msg
+    
+
 def read_LN2_scale(port_key):
     port = all_ports[port_key]
     data = str(port.readline())
@@ -176,6 +192,7 @@ def read_Lakeshore_Telnet(IP="192.168.0.87"):
     msg = []
     msg.append("AMI_1700,sensor=N2_lvl n2_percent=" + LN2_lvl)
     msg.append("AMI_1700,sensor=HE_lvl he_percent=" + HE_lvl)
+    time.sleep(1.0)
     return msg
 
 
@@ -356,19 +373,19 @@ def read_gyrotron_lvl(port_key):
         return
     
 def read_maxigauge(IP='192.168.130.195'):
-    tn = Telnet(IP, 8000)
+    tn = Telnet(IP, 8000, 3)
     data = b''
     msg = []
     for gauge_n in range(1, 7):
         command = bytes('PR' + str(gauge_n) + '\r', 'ASCII')
         tn.write(command)
-        time.sleep(0.1)
+        time.sleep(0.2)
         data = tn.read_eager()
         
         if data == b'\x06\r\n': #ACQ
 
             tn.write(b'\x05')   #ENQ
-            time.sleep(0.1)
+            time.sleep(0.2)
             data = tn.read_eager()
             if not data == b'':
                 pressure_str = data.decode("ASCII").strip("\r\n").split(",")[1]
@@ -377,8 +394,8 @@ def read_maxigauge(IP='192.168.130.195'):
                 msg.append("MAXIGAUGE_TPG366,sensor=CH_" + str(gauge_n) + " PRESSURE=" + str(pressure))
 
         else:
-            #print(data)
             log_error("Maxigauge failed to respond to " + str(command))
+            time.sleep(0.2)
     tn.close()
     time.sleep(0.2)
     return msg
