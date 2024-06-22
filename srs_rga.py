@@ -1,57 +1,72 @@
-import os
-import serial
 import time
-import csv
-import traceback
-from telnetlib import Telnet
-from pymodbus.client import ModbusTcpClient
-
-from ssh_logging import remote_logging
-from influxdb_client import InfluxDBClient, ReturnStatement
-from influxdb_client.client.write_api import SYNCHRONOUS
-from influxdb_client.client import write_api
-
 import logging
-import matplotlib.pyplot as plt
-import pyrga # install package
+from srsinst.rga import RGA100
 
-# turn off logging
-logging.getLogger('pyrga').setLevel(logging.CRITICAL)
-
-# SINGLE MASS SCAN ##
-if __name__ == "__main__":
+def read_SRS_RGA(port='/dev/ttyUSB0'):
     # initialize client with non-default noise floor setting
-    RGA = pyrga.RGAClient("/dev/ttyUSB0", noise_floor=0)
+    RGA = RGA100('serial', port, 28800)    
     # check filament status and turn it on if necessary
-    if not RGA.get_filament_status():
-        RGA.turn_on_filament()
+    RGA.filament.turn_on(target_emission_current=1.0)
+    
     # read partial pressures of air constituent
     MASSES = {
         18: "H2O",
         28: "N2",
         32: "O2",
         40: "Ar",
+        43: "Acetone",
+        31: "Alcohol",
+        2: "H2",
+        4: "D2",
+        44: "CO2"
     }
-    for m, i in MASSES.items():
-        print("partial pressure of element {} is {} Torr".format(i, RGA.read_mass(m)))
-
-# ## SPECTRUM SCAN ##
-# if __name__ == "__main__":
-#     # initialize client with default settings
-#     RGA = pyrga.RGAClient("/dev/ttyUSB0")
-#     # check filament status and turn it on if necessary
-#     if not RGA.get_filament_status():
-#         RGA.turn_on_filament()
-#     # read analog scan of 1-50 mass range with max resolution of 25 steps per amu
-#     masses, pressures, total = RGA.read_spectrum(1, 50, 25)
-
-#     plt.plot(masses, pressures)
-#     plt.yscale('log')
-#     plt.ylim(1e-9, 1e-6)
-#     plt.show()
-
-
-def read_SRS_RGA(port_key):
     msg = []
-    msg.append("RGA_100,sensor= pressure=" + )
+    a, b, c = RGA.ionizer.get_parameters()
+    msg.append("RGA_100,sensor=ionizer electron_energy=" + str(a))
+    msg.append("RGA_100,sensor=ionizer ion_energy=" + str(a))
+    msg.append("RGA_100,sensor=ionizer focus_voltage=" + str(a))
+    msg.append("RGA_100,sensor=ionizer current=" + str(RGA.ionizer.emission_current))
+    
+    msg.append("RGA_100,sensor=total_pressure PRESSURE=" + str(RGA.pressure.get_total_pressure_in_torr()))
+    
+    for m, i in MASSES.items():
+        ion_current = RGA.scan.get_single_mass_scan(m)
+        pressure = ion_current * RGA.pressure.get_partial_pressure_sensitivity_in_torr()
+        msg.append("RGA_100,sensor=" + i + " PRESSURE=" + str(pressure))
+    time.sleep(1)
+    
+    
+    current_minute = time.strftime("%M", time.localtime())
+    # Do a full mass scan on the hour
+    #if current_minute == "00":
+    if True:
+        logging.info("Starting full RGA spectrum scan at: "  + time.strftime("%a %b %d %H:%M:%S %Y", time.localtime()))
+        # Set scan parameters
+        RGA.scan.initial_mass = 1
+        RGA.scan.final_mass = 100
+        RGA.scan.scan_speed = 3
+        RGA.scan.resolution = 10  # steps_per_amu
+
+        # Get scan parameters
+        mi, mf, nf, sa = RGA.scan.get_parameters()
+        msg.append("RGA_100,sensor=scan_param scan_speed=" + str(nf))
+        msg.append("RGA_100,sensor=scan_param steps_per_amu=" + str(sa))
+        
+        analog_spectrum  = RGA.scan.get_analog_scan()
+        spectrum_in_torr = RGA.scan.get_partial_pressure_corrected_spectrum(analog_spectrum)
+        # Get the matching mass axis with the spectrum
+        analog_mass_axis = RGA.scan.get_mass_axis(True)  # is it for analog scan? No.
+        for i in range(len(analog_mass_axis)):
+            mass = "%05.1f" % analog_mass_axis[i]
+            pressure_in_torr = str(spectrum_in_torr[i])
+            msg.append("RGA_100,amu=" + mass + " pressure=" + pressure_in_torr)
+        logging.info("Ending full RGA spectrum scan at: "  + time.strftime("%a %b %d %H:%M:%S %Y", time.localtime()))
+        print(msg)
+
     return msg
+
+def reset_RGA(port='/dev/ttyUSB0'):
+    RGA = RGA100('serial', port, 28800)    
+    print(RGA.reset())
+    return 0
+

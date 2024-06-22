@@ -3,7 +3,7 @@ import concurrent.futures
 import logging
 
 from serial_logging import *
-from maxigauge_pressure_reader import maxigauge
+from srs_rga import read_SRS_RGA
 
 from ssh_logging import remote_logging
 from influxdb_client import InfluxDBClient, ReturnStatement
@@ -58,12 +58,13 @@ def write_to_DB(executor, write_api, org):
     #executor.submit(persistent_write_to_db, write_api, "Vacuum", org, read_Extorr_RGA, "E:\RGALogs")
     #executor.submit(persistent_write_to_db, write_api, "helium", org, read_recondenser_controller, "recondenser")
     #executor.submit(persistent_write_to_db, write_api, "Vacuum", org, read_vacuum_pressure, "PM31")
-    executor.submit(persistent_write_to_db, write_api, "helium", org, read_gyrotron_lvl, "AM1700")
+    #executor.submit(persistent_write_to_db, write_api, "helium", org, read_gyrotron_lvl, "AM1700")
     #executor.submit(persistent_write_to_db, write_api, "helium", org, read_Lakeshore_Telnet, "192.168.130.210")
     #executor.submit(persistent_write_to_db, write_api, "Control_System", org, michael.read_michael_data, michael_controlfile)
     #executor.submit(persistent_write_to_db, write_api, "Control_System", org, michael.read_shot_data, michael_shotfile)
     executor.submit(persistent_write_to_db, write_api, "Vacuum", org, read_maxigauge, "192.168.130.195")
     #executor.submit(persistent_write_to_db, write_api, "helium", org, read_ADAM_6015, "192.168.130.125")
+    executor.submit(persistent_write_to_db, write_api, "Vacuum", org, read_SRS_RGA, '/dev/ttyUSB0')
     
     return
 
