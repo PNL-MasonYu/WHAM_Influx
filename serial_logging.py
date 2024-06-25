@@ -44,7 +44,7 @@ def serial_set_up():
     # Lakeshore temperature monitor
     ser_lakeshore = serial.Serial()
     ser_lakeshore.baudrate = 1200
-    ser_lakeshore.port = "COM4"
+    ser_lakeshore.port = "COM17"
     ser_lakeshore.parity = serial.PARITY_ODD
     ser_lakeshore.bytesize = serial.SEVENBITS
     ser_lakeshore.stopbits = serial.STOPBITS_ONE
@@ -52,7 +52,7 @@ def serial_set_up():
     #ser_lakeshore.inter_byte_timeout = 1
     #ser_lakeshore.rtscts = True
     #ser_lakeshore.dsrdtr = True
-    """
+    
     close_open_port(ser_lakeshore)
     try:
         ser_lakeshore.open()
@@ -66,7 +66,7 @@ def serial_set_up():
     ser_lakeshore.write(b'\n')
     time.sleep(0.1)
     ser_lakeshore.reset_input_buffer()
-    """
+    
     all_ports["lakeshore"] = ser_lakeshore
     
     # HRC-100 Helium recondenser controller serial port

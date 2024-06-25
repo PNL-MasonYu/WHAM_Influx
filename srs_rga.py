@@ -23,8 +23,8 @@ def read_SRS_RGA(port='/dev/ttyUSB0'):
     msg = []
     a, b, c = RGA.ionizer.get_parameters()
     msg.append("RGA_100,sensor=ionizer electron_energy=" + str(a))
-    msg.append("RGA_100,sensor=ionizer ion_energy=" + str(a))
-    msg.append("RGA_100,sensor=ionizer focus_voltage=" + str(a))
+    msg.append("RGA_100,sensor=ionizer ion_energy=" + str(b))
+    msg.append("RGA_100,sensor=ionizer focus_voltage=" + str(c))
     msg.append("RGA_100,sensor=ionizer current=" + str(RGA.ionizer.emission_current))
     
     msg.append("RGA_100,sensor=total_pressure PRESSURE=" + str(RGA.pressure.get_total_pressure_in_torr()))
