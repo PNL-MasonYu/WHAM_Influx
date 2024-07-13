@@ -44,7 +44,7 @@ def serial_set_up():
     # Lakeshore temperature monitor
     ser_lakeshore = serial.Serial()
     ser_lakeshore.baudrate = 1200
-    ser_lakeshore.port = "COM17"
+    ser_lakeshore.port = "/dev/ttyUSB2"
     ser_lakeshore.parity = serial.PARITY_ODD
     ser_lakeshore.bytesize = serial.SEVENBITS
     ser_lakeshore.stopbits = serial.STOPBITS_ONE
@@ -63,11 +63,11 @@ def serial_set_up():
     
     # Send the instrument a line break, wait 100ms, and clear the input buffer so that
     # any leftover communications from a prior session don't gum up the works
-    ser_lakeshore.write(b'\n')
-    time.sleep(0.1)
-    ser_lakeshore.reset_input_buffer()
+    #ser_lakeshore.write(b'\n')
+    #time.sleep(0.1)
+    #ser_lakeshore.reset_input_buffer()
     
-    all_ports["lakeshore"] = ser_lakeshore
+    all_ports["lakeshore_NBI"] = ser_lakeshore
     
     # HRC-100 Helium recondenser controller serial port
     ser_recondenser = serial.Serial()
@@ -158,12 +158,13 @@ def read_ADAM_6015(ip):
     raw_temps = [0] * 7
     scaled_temps = [0.0] * 7
     msg = []
+    last_ip = str(ip.split(".")[-1])
     for reg in [0,1,2,3,4,5,6]:
         raw_temps[reg] = client.read_input_registers(address=reg, count=1).registers[0]
         scaled_temps[reg] = raw_temps[reg] / 65535 * 100
-        msg.append("ADAM_6015,sensor=ch{:} temp_celsius={:.3f}".format(reg, scaled_temps[reg]))
+        msg.append("ADAM_6015_"+last_ip+",sensor=ch{:} temp_celsius={:.3f}".format(reg, scaled_temps[reg]))
     #print(raw_temps)
-    print(msg)
+    #print(msg)
     time.sleep(1)
     return msg
     
@@ -185,7 +186,7 @@ def read_LN2_scale(port_key):
     time.sleep(0.5)
     return weight
 
-def read_Lakeshore_Telnet(IP="192.168.0.87"):
+def read_AMI_Telnet(IP="192.168.0.87"):
     LN2_lvl = telnet_client(IP, 7180, "MEASure:N2:LEVel?\r")
     HE_lvl = telnet_client(IP, 7180, "MEASure:HE:LEVel?\r")
 
@@ -197,38 +198,37 @@ def read_Lakeshore_Telnet(IP="192.168.0.87"):
 
 
 def read_Lakeshore_Kelvin(port_key):
+    # Lakeshore model 218
     lakeshore_port = all_ports[port_key]
-    time.sleep(1)
-    #lakeshore_port.reset_output_buffer()
-    command = 'KRDG? 3\r\n'.encode("ASCII")
-    lakeshore_port.write(command)
-    #print(lakeshore_port.get_settings())
-    #lakeshore_port.write(bytes('KRDG? 3\r\n'))
-    #lakeshore_port.flush()
-    #lakeshore_port.rts = True
-    #lakeshore_port.dtr = True
-    serial_input = lakeshore_port.readline()
-    print(serial_input)
-    data = str(serial_input)[2:-5].split(',')
-    """
-    try:
-        serial_input = lakeshore_port.readline()
-        print(serial_input)
-
-    except:
-        exception_details = traceback.format_exc()
-        log_error(exception_details)
-        #lakeshore_port.close()
-        time.sleep(5)
-        #lakeshore_port.open()
-        
-        return
-    """
     temps = []
-    #print(data)
-    for n in range(len(data)):
-        temps.append("temperature,sensor=ch{:} temp={:}".format(n+1,float(data[n]))) 
+    for n in range(1,8,1):
     
+        #lakeshore_port.reset_output_buffer()
+        command_str = 'KRDG? ' + str(n) + '\r\n'
+        command = command_str.encode('ASCII')
+        lakeshore_port.write(command)
+        #print(lakeshore_port.get_settings())
+        #lakeshore_port.write(bytes('KRDG? 3\r\n'))
+        #lakeshore_port.flush()
+        #lakeshore_port.rts = True
+        #lakeshore_port.dtr = True
+        #serial_input = lakeshore_port.readline()
+        #print(serial_input)
+        #data = str(serial_input)[2:-5]
+        
+        try:
+            serial_input = lakeshore_port.readline()
+            print(serial_input)
+            data = str(serial_input)[2:-5]
+            temps.append("temperature_" + port_key + ",sensor=ch{:} temp={:}".format(n+1,float(data))) 
+        except:
+            exception_details = traceback.format_exc()
+            log_error(exception_details)
+            #lakeshore_port.close()
+            time.sleep(1)
+            #lakeshore_port.open()
+            return
+        
     return temps
 
 def read_Cryomech_Compressor(file):

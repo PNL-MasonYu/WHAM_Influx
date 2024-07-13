@@ -52,19 +52,21 @@ def write_to_DB(executor, write_api, org):
     # Comment out things that does not need to be logged
     
     
-    #executor.submit(persistent_write_to_db, write_api, "helium", org, read_Lakeshore_Kelvin, "lakeshore")
+    executor.submit(persistent_write_to_db, write_api, "helium", org, read_Lakeshore_Kelvin, "lakeshore_NBI")
     #executor.submit(persistent_write_to_db, write_api, "helium", org, read_Cryomech_Compressor, 'C:/Users/WHAMuser/Desktop/Influxdb Data Logging/CPTLog.txt')
     #executor.submit(persistent_write_to_db, write_api, "helium", org, read_LN2_scale, 'LN2_SCALE')
     #executor.submit(persistent_write_to_db, write_api, "Vacuum", org, read_Extorr_RGA, "E:\RGALogs")
     #executor.submit(persistent_write_to_db, write_api, "helium", org, read_recondenser_controller, "recondenser")
     #executor.submit(persistent_write_to_db, write_api, "Vacuum", org, read_vacuum_pressure, "PM31")
     #executor.submit(persistent_write_to_db, write_api, "helium", org, read_gyrotron_lvl, "AM1700")
-    #executor.submit(persistent_write_to_db, write_api, "helium", org, read_Lakeshore_Telnet, "192.168.130.210")
+    #executor.submit(persistent_write_to_db, write_api, "helium", org, read_AMI_Telnet, "192.168.130.210")
     #executor.submit(persistent_write_to_db, write_api, "Control_System", org, michael.read_michael_data, michael_controlfile)
     #executor.submit(persistent_write_to_db, write_api, "Control_System", org, michael.read_shot_data, michael_shotfile)
     executor.submit(persistent_write_to_db, write_api, "Vacuum", org, read_maxigauge, "192.168.130.195")
-    #executor.submit(persistent_write_to_db, write_api, "helium", org, read_ADAM_6015, "192.168.130.125")
-    executor.submit(persistent_write_to_db, write_api, "Vacuum", org, read_SRS_RGA, '/dev/ttyUSB0')
+    executor.submit(persistent_write_to_db, write_api, "calorimetry", org, read_ADAM_6015, "192.168.130.126") #calorimeter
+    #executor.submit(persistent_write_to_db, write_api, "calorimetry", org, read_ADAM_6015, "192.168.130.125") 
+
+    #executor.submit(persistent_write_to_db, write_api, "Vacuum", org, read_SRS_RGA, '/dev/ttyUSB0')
     
     return
 
