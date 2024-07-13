@@ -201,7 +201,7 @@ def read_Lakeshore_Kelvin(port_key):
     # Lakeshore model 218
     lakeshore_port = all_ports[port_key]
     temps = []
-    for n in range(1,8,1):
+    for n in range(1,9):
     
         #lakeshore_port.reset_output_buffer()
         command_str = 'KRDG? ' + str(n) + '\r\n'
@@ -220,7 +220,7 @@ def read_Lakeshore_Kelvin(port_key):
             serial_input = lakeshore_port.readline()
             print(serial_input)
             data = str(serial_input)[2:-5]
-            temps.append("temperature_" + port_key + ",sensor=ch{:} temp={:}".format(n+1,float(data))) 
+            temps.append("temperature_" + port_key + ",sensor=ch{:} temp={:}".format(n,float(data))) 
         except:
             exception_details = traceback.format_exc()
             log_error(exception_details)

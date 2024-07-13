@@ -42,10 +42,10 @@ def read_baratron_rp(IP="rp-f0908c.local"):
     # check if 0.1 range is active
     rp.tx_txt('DIG:PIN? DIO1_P')
     if rp.rx_txt() == '1':
-        pressure = average_voltage / 100
+        pressure = average_voltage / 10
         full_range = False
     else:
-        pressure = average_voltage / 10
+        pressure = average_voltage / 100
         full_range = True
         
     rp.tx_txt('DIG:PIN? DIO2_P')
