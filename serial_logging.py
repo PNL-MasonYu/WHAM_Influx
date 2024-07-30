@@ -165,7 +165,6 @@ def read_ADAM_6015(ip):
         msg.append("ADAM_6015_"+last_ip+",sensor=ch{:} temp_celsius={:.3f}".format(reg, scaled_temps[reg]))
     #print(raw_temps)
     #print(msg)
-    time.sleep(1)
     return msg
     
 
@@ -189,10 +188,10 @@ def read_LN2_scale(port_key):
 def read_AMI_Telnet(IP="192.168.0.87"):
     LN2_lvl = telnet_client(IP, 7180, "MEASure:N2:LEVel?\r")
     HE_lvl = telnet_client(IP, 7180, "MEASure:HE:LEVel?\r")
-
+    IP_digit = IP.split(".")[-1]
     msg = []
-    msg.append("AMI_1700,sensor=N2_lvl n2_percent=" + LN2_lvl)
-    msg.append("AMI_1700,sensor=HE_lvl he_percent=" + HE_lvl)
+    msg.append("AMI_1700_"+IP_digit+",sensor=N2_lvl n2_percent=" + LN2_lvl)
+    msg.append("AMI_1700_"+IP_digit+",sensor=HE_lvl he_percent=" + HE_lvl)
     time.sleep(1.0)
     return msg
 

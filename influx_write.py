@@ -4,6 +4,10 @@ import logging
 
 from serial_logging import *
 from srs_rga import read_SRS_RGA
+from baratron import read_baratron_rp
+from red_ion_gauge import read_red_ion_gauge
+from NBI_ion_gauge import read_NBI_gauge_rp
+from shot_number import read_shot_number
 
 from ssh_logging import remote_logging
 from influxdb_client import InfluxDBClient, ReturnStatement
@@ -59,22 +63,26 @@ def write_to_DB(executor, write_api, org):
     #executor.submit(persistent_write_to_db, write_api, "helium", org, read_recondenser_controller, "recondenser")
     #executor.submit(persistent_write_to_db, write_api, "Vacuum", org, read_vacuum_pressure, "PM31")
     #executor.submit(persistent_write_to_db, write_api, "helium", org, read_gyrotron_lvl, "AM1700")
-    #executor.submit(persistent_write_to_db, write_api, "helium", org, read_AMI_Telnet, "192.168.130.210")
+    executor.submit(persistent_write_to_db, write_api, "helium", org, read_AMI_Telnet, "192.168.130.200")
+    executor.submit(persistent_write_to_db, write_api, "helium", org, read_AMI_Telnet, "192.168.130.232")
     #executor.submit(persistent_write_to_db, write_api, "Control_System", org, michael.read_michael_data, michael_controlfile)
     #executor.submit(persistent_write_to_db, write_api, "Control_System", org, michael.read_shot_data, michael_shotfile)
     executor.submit(persistent_write_to_db, write_api, "Vacuum", org, read_maxigauge, "192.168.130.195")
     executor.submit(persistent_write_to_db, write_api, "calorimetry", org, read_ADAM_6015, "192.168.130.126") #calorimeter
-    #executor.submit(persistent_write_to_db, write_api, "calorimetry", org, read_ADAM_6015, "192.168.130.125") 
+    executor.submit(persistent_write_to_db, write_api, "calorimetry", org, read_ADAM_6015, "192.168.130.125") 
+    executor.submit(persistent_write_to_db, write_api, "Vacuum", org, read_baratron_rp, "192.168.130.212")
+    #executor.submit(persistent_write_to_db, write_api, "Vacuum", org, read_red_ion_gauge, "rp-f0be68.local")
+    executor.submit(persistent_write_to_db, write_api, "Vacuum", org, read_SRS_RGA, '/dev/ttyUSB0')
+    executor.submit(persistent_write_to_db, write_api, "Vacuum", org, read_NBI_gauge_rp, "rp-f0bd65.local")
+    executor.submit(persistent_write_to_db, write_api, "System", org, read_shot_number, "andrew.psl.wisc.edu")
 
-    #executor.submit(persistent_write_to_db, write_api, "Vacuum", org, read_SRS_RGA, '/dev/ttyUSB0')
-    
     return
 
 if __name__ == '__main__':
     # Configure logging file
     start_time = time.localtime()
-    err_file = "log_" + time.strftime("%Y_%m_%d_%H-%M", start_time) + ".csv"
-    logging.basicConfig(filename=err_file, level=logging.DEBUG)
+    err_file = "/mnt/n/whamdata/InfluxDB_logs/log_" + time.strftime("%Y_%m_%d_%H-%M", start_time) + ".csv"
+    logging.basicConfig(filename=err_file, level=logging.INFO)
 
     # The token is unique to WHAM AWS service, do not delete it
     cloud_token = "4AMxSRRqZ-F5y35r7WFM9kyU9oDL50AfyVfcB2lAKrZUDeRHaEZMRPjn9K2TIUfL4iMW4Os7H2OfhKFemU1S1w=="

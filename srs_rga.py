@@ -2,7 +2,7 @@ import time
 import logging
 from srsinst.rga import RGA100
 
-def read_SRS_RGA(port='/dev/ttyUSB0'):
+def read_SRS_RGA(port='/dev/ttyUSB3'):
     # initialize client with non-default noise floor setting
     RGA = RGA100('serial', port, 28800)    
     # check filament status and turn it on if necessary
@@ -33,13 +33,12 @@ def read_SRS_RGA(port='/dev/ttyUSB0'):
         ion_current = RGA.scan.get_single_mass_scan(m)
         pressure = ion_current * RGA.pressure.get_partial_pressure_sensitivity_in_torr()
         msg.append("RGA_100,sensor=" + i + " PRESSURE=" + str(pressure))
-    time.sleep(1)
-    
+        time.sleep(1)
     
     current_minute = time.strftime("%M", time.localtime())
     # Do a full mass scan on the hour
-    #if current_minute == "00":
-    if True:
+    if current_minute == "00":
+    #if True:
         logging.info("Starting full RGA spectrum scan at: "  + time.strftime("%a %b %d %H:%M:%S %Y", time.localtime()))
         # Set scan parameters
         RGA.scan.initial_mass = 1
@@ -65,8 +64,12 @@ def read_SRS_RGA(port='/dev/ttyUSB0'):
 
     return msg
 
-def reset_RGA(port='/dev/ttyUSB0'):
+def reset_RGA(port='/dev/ttyUSB3'):
     RGA = RGA100('serial', port, 28800)    
     print(RGA.reset())
     return 0
 
+if __name__ == '__main__':
+
+#    reset_RGA()
+    read_SRS_RGA()
