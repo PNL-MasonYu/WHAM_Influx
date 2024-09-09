@@ -103,7 +103,7 @@ def serial_set_up():
         exception_details = traceback.format_exc()
         log_error(exception_details)
     all_ports["PM31"] = ser_PM31
-    """
+    
     # American Magnetics Model 1700 liquid level instrument
     ser_1700 = serial.Serial()
     ser_1700.baudrate = 300
@@ -144,6 +144,7 @@ def serial_set_up():
         exception_details = traceback.format_exc()
         log_error(exception_details)
     all_ports["LN2_SCALE"] = ser_scale
+    """
     return all_ports
 
 def michael_logging_setup():
@@ -211,9 +212,6 @@ def read_Lakeshore_Kelvin(port_key):
         #lakeshore_port.flush()
         #lakeshore_port.rts = True
         #lakeshore_port.dtr = True
-        #serial_input = lakeshore_port.readline()
-        #print(serial_input)
-        #data = str(serial_input)[2:-5]
         
         try:
             serial_input = lakeshore_port.readline()
@@ -223,10 +221,12 @@ def read_Lakeshore_Kelvin(port_key):
         except:
             exception_details = traceback.format_exc()
             log_error(exception_details)
+            #lakeshore_port.flush()
             #lakeshore_port.close()
             time.sleep(1)
             #lakeshore_port.open()
             return
+        #time.sleep(0.2)
         
     return temps
 
