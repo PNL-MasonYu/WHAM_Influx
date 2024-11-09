@@ -8,6 +8,7 @@ import matplotlib.pyplot as plot
 def read_baratron_rp(IP="rp-f0908c.local"):
 
     zero_offset = 2.883e-3
+    
     DEC = 1
     # connect to RP at the provided IP
     rp = scpi.scpi(IP)

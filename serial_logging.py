@@ -155,6 +155,8 @@ def michael_logging_setup():
     return 0
 
 def read_ADAM_6015(ip):
+    # Login is root
+    # Password is 00000000
     client = ModbusTcpClient(ip)
     raw_temps = [0] * 7
     scaled_temps = [0.0] * 7
@@ -162,7 +164,7 @@ def read_ADAM_6015(ip):
     last_ip = str(ip.split(".")[-1])
     for reg in [0,1,2,3,4,5,6]:
         raw_temps[reg] = client.read_input_registers(address=reg, count=1).registers[0]
-        scaled_temps[reg] = raw_temps[reg] / 65535 * 100
+        scaled_temps[reg] = raw_temps[reg] / 65535 * 200
         msg.append("ADAM_6015_"+last_ip+",sensor=ch{:} temp_celsius={:.3f}".format(reg, scaled_temps[reg]))
     #print(raw_temps)
     #print(msg)
@@ -215,7 +217,7 @@ def read_Lakeshore_Kelvin(port_key):
         
         try:
             serial_input = lakeshore_port.readline()
-            print(serial_input)
+            #print(serial_input)
             data = str(serial_input)[2:-5]
             temps.append("temperature_" + port_key + ",sensor=ch{:} temp={:}".format(n,float(data))) 
         except:

@@ -5,9 +5,10 @@ import logging
 from serial_logging import *
 from srs_rga import read_SRS_RGA
 from baratron import read_baratron_rp
-from red_ion_gauge import read_red_ion_gauge
+from read_ion_gauge import read_ion_gauge
 from NBI_ion_gauge import read_NBI_gauge_rp
 from shot_number import read_shot_number
+from osaka_turbo_controller import read_osaka_turbo
 
 from ssh_logging import remote_logging
 from influxdb_client import InfluxDBClient, ReturnStatement
@@ -71,9 +72,14 @@ def write_to_DB(executor, write_api, org):
     executor.submit(persistent_write_to_db, write_api, "calorimetry", org, read_ADAM_6015, "192.168.130.126") #calorimeter
     executor.submit(persistent_write_to_db, write_api, "calorimetry", org, read_ADAM_6015, "192.168.130.125") 
     executor.submit(persistent_write_to_db, write_api, "Vacuum", org, read_baratron_rp, "192.168.130.212")
-    #executor.submit(persistent_write_to_db, write_api, "Vacuum", org, read_red_ion_gauge, "rp-f0be68.local")
+    #executor.submit(persistent_write_to_db, write_api, "Vacuum", org, read_ion_gauge, "rp-f09303.local")
+    #executor.submit(persistent_write_to_db, write_api, "Vacuum", org, read_ion_gauge, "rp-f0be68.local")
     executor.submit(persistent_write_to_db, write_api, "Vacuum", org, read_SRS_RGA, '/dev/ttyUSB0')
+    executor.submit(persistent_write_to_db, write_api, "Vacuum", org, read_SRS_RGA, '/dev/ttyUSB3')
     executor.submit(persistent_write_to_db, write_api, "Vacuum", org, read_NBI_gauge_rp, "rp-f0bd65.local")
+    executor.submit(persistent_write_to_db, write_api, "Vacuum", org, read_osaka_turbo, "/dev/ttyUSB4")
+    executor.submit(persistent_write_to_db, write_api, "Vacuum", org, read_osaka_turbo, "/dev/ttyUSB5")
+    executor.submit(persistent_write_to_db, write_api, "Vacuum", org, read_osaka_turbo, "/dev/ttyUSB6")
     executor.submit(persistent_write_to_db, write_api, "System", org, read_shot_number, "andrew.psl.wisc.edu")
 
     return
@@ -82,7 +88,7 @@ if __name__ == '__main__':
     # Configure logging file
     start_time = time.localtime()
     err_file = "/mnt/n/whamdata/InfluxDB_logs/log_" + time.strftime("%Y_%m_%d_%H-%M", start_time) + ".csv"
-    logging.basicConfig(filename=err_file, level=logging.INFO)
+    logging.basicConfig(filename=err_file, level=logging.ERROR)
 
     # The token is unique to WHAM AWS service, do not delete it
     cloud_token = "4AMxSRRqZ-F5y35r7WFM9kyU9oDL50AfyVfcB2lAKrZUDeRHaEZMRPjn9K2TIUfL4iMW4Os7H2OfhKFemU1S1w=="
