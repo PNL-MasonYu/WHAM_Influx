@@ -21,18 +21,6 @@ def log_error(exception_details):
 def close_open_port(port):
     if port.is_open:
         port.close()
-        
-def telnet_client(host: str, port: int, command:str):
-    tn = Telnet(host, port)
-    #print(f"connected to ({host}, {port})")
-    command = bytes(command, "ASCII")
-    tn.write(command)
-    time.sleep(1)
-    data = tn.read_eager()
-    output = data.decode('ascii').strip()
-    tn.close()
-    time.sleep(1)
-    return output
     
 
 def serial_set_up():
@@ -187,16 +175,6 @@ def read_LN2_scale(port_key):
     weight = "LN2_scale,sensor=lb weight={:}".format(weight_lb)
     time.sleep(0.5)
     return weight
-
-def read_AMI_Telnet(IP="192.168.0.87"):
-    LN2_lvl = telnet_client(IP, 7180, "MEASure:N2:LEVel?\r")
-    HE_lvl = telnet_client(IP, 7180, "MEASure:HE:LEVel?\r")
-    IP_digit = IP.split(".")[-1]
-    msg = []
-    msg.append("AMI_1700_"+IP_digit+",sensor=N2_lvl n2_percent=" + LN2_lvl)
-    msg.append("AMI_1700_"+IP_digit+",sensor=HE_lvl he_percent=" + HE_lvl)
-    time.sleep(1.0)
-    return msg
 
 
 def read_Lakeshore_Kelvin(port_key):

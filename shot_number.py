@@ -10,6 +10,7 @@ def read_shot_number(server="andrew.psl.wisc.edu"):
     msg = []
     msg.append("MDSPlus,data=shot shot_n=" + str(shot_number))
     time.sleep(1)
+    conn.closeAllTrees()
     
     return msg
 

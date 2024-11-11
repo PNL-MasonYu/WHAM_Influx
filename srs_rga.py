@@ -2,12 +2,11 @@ import time
 import logging
 from srsinst.rga import RGA100
 
-def read_SRS_RGA(port='/dev/ttyUSB0'):
+def read_SRS_RGA(port='/dev/ttyUSB3'):
     # initialize client with non-default noise floor setting
     RGA = RGA100('serial', port, 28800)    
     # check filament status and turn it on if necessary
     RGA.filament.turn_on(target_emission_current=1.0)
-    
     # read partial pressures of air constituent
     MASSES = {
         18: "H2O",
@@ -66,16 +65,28 @@ def read_SRS_RGA(port='/dev/ttyUSB0'):
             pressure_in_torr = str(spectrum_in_torr[i])
             msg.append("RGA_100"+location+",amu=" + mass + " pressure=" + pressure_in_torr)
         logging.info("Ending full RGA spectrum scan at: "  + time.strftime("%a %b %d %H:%M:%S %Y", time.localtime()))
-        print(msg)
+        #print(msg)
+
+    RGA.disconnect()
 
     return msg
 
-def reset_RGA(port='/dev/ttyUSB0'):
+def reset_RGA(port='/dev/ttyUSB3'):
     RGA = RGA100('serial', port, 28800)    
     print(RGA.reset())
+    RGA.filament.turn_off()
+    RGA.disconnect()
+    return 0
+
+def degas_RGA(port='/dev/ttyUSB3'):
+    RGA = RGA100('serial', port, 28800)    
+    RGA.filament.start_degas(3)
+    RGA.filament.turn_off()
+    RGA.disconnect()
     return 0
 
 if __name__ == '__main__':
 
-#    reset_RGA()
+    #reset_RGA()
+    #degas_RGA()
     read_SRS_RGA()

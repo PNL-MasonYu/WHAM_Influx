@@ -3,6 +3,7 @@ import concurrent.futures
 import logging
 
 from serial_logging import *
+from AMI_1700_liquid_level import read_AMI_Telnet
 from srs_rga import read_SRS_RGA
 from baratron import read_baratron_rp
 from read_ion_gauge import read_ion_gauge
@@ -64,23 +65,23 @@ def write_to_DB(executor, write_api, org):
     #executor.submit(persistent_write_to_db, write_api, "helium", org, read_recondenser_controller, "recondenser")
     #executor.submit(persistent_write_to_db, write_api, "Vacuum", org, read_vacuum_pressure, "PM31")
     #executor.submit(persistent_write_to_db, write_api, "helium", org, read_gyrotron_lvl, "AM1700")
-    executor.submit(persistent_write_to_db, write_api, "helium", org, read_AMI_Telnet, "192.168.130.200")
-    executor.submit(persistent_write_to_db, write_api, "helium", org, read_AMI_Telnet, "192.168.130.232")
+    executor.submit(persistent_write_to_db, write_api, "helium", org, read_AMI_Telnet, "192.168.130.200") #gyrotron liquid level
+    executor.submit(persistent_write_to_db, write_api, "helium", org, read_AMI_Telnet, "192.168.130.232") #NBI liquid level
     #executor.submit(persistent_write_to_db, write_api, "Control_System", org, michael.read_michael_data, michael_controlfile)
     #executor.submit(persistent_write_to_db, write_api, "Control_System", org, michael.read_shot_data, michael_shotfile)
     executor.submit(persistent_write_to_db, write_api, "Vacuum", org, read_maxigauge, "192.168.130.195")
-    executor.submit(persistent_write_to_db, write_api, "calorimetry", org, read_ADAM_6015, "192.168.130.126") #calorimeter
-    executor.submit(persistent_write_to_db, write_api, "calorimetry", org, read_ADAM_6015, "192.168.130.125") 
+    executor.submit(persistent_write_to_db, write_api, "Vacuum", org, read_ADAM_6015, "192.168.130.126") #end cell bolometers
+    executor.submit(persistent_write_to_db, write_api, "Vacuum", org, read_ADAM_6015, "192.168.130.125") #cc bolometers
     executor.submit(persistent_write_to_db, write_api, "Vacuum", org, read_baratron_rp, "192.168.130.212")
     #executor.submit(persistent_write_to_db, write_api, "Vacuum", org, read_ion_gauge, "rp-f09303.local")
     #executor.submit(persistent_write_to_db, write_api, "Vacuum", org, read_ion_gauge, "rp-f0be68.local")
-    executor.submit(persistent_write_to_db, write_api, "Vacuum", org, read_SRS_RGA, '/dev/ttyUSB0')
-    executor.submit(persistent_write_to_db, write_api, "Vacuum", org, read_SRS_RGA, '/dev/ttyUSB3')
+    executor.submit(persistent_write_to_db, write_api, "Vacuum", org, read_SRS_RGA, '/dev/ttyUSB0') #CC RGA
+    executor.submit(persistent_write_to_db, write_api, "Vacuum", org, read_SRS_RGA, '/dev/ttyUSB3') #SEC RGA
     executor.submit(persistent_write_to_db, write_api, "Vacuum", org, read_NBI_gauge_rp, "rp-f0bd65.local")
     executor.submit(persistent_write_to_db, write_api, "Vacuum", org, read_osaka_turbo, "/dev/ttyUSB4")
     executor.submit(persistent_write_to_db, write_api, "Vacuum", org, read_osaka_turbo, "/dev/ttyUSB5")
     executor.submit(persistent_write_to_db, write_api, "Vacuum", org, read_osaka_turbo, "/dev/ttyUSB6")
-    executor.submit(persistent_write_to_db, write_api, "System", org, read_shot_number, "andrew.psl.wisc.edu")
+    #executor.submit(persistent_write_to_db, write_api, "System", org, read_shot_number, "andrew.psl.wisc.edu")
 
     return
 

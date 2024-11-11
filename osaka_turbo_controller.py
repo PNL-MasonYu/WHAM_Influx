@@ -36,7 +36,7 @@ def read_osaka_turbo(port='/dev/ttyUSB5'):
     try:
         serial_input = ser.readline()
         speed = int(serial_input) * 60
-        print(speed)
+        #print(speed)
         msg.append("osaka_turbo,port=" + port + " speed_rpm=" + str(speed))
     except:
         exception_details = traceback.format_exc()
