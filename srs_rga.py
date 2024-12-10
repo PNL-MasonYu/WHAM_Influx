@@ -2,7 +2,7 @@ import time
 import logging
 from srsinst.rga import RGA100
 
-def read_SRS_RGA(port='/dev/ttyUSB3'):
+def read_SRS_RGA(port='/dev/ttyUSB0'):
     # initialize client with non-default noise floor setting
     RGA = RGA100('serial', port, 28800)    
     # check filament status and turn it on if necessary
@@ -71,15 +71,17 @@ def read_SRS_RGA(port='/dev/ttyUSB3'):
 
     return msg
 
-def reset_RGA(port='/dev/ttyUSB3'):
+def reset_RGA(port='/dev/ttyUSB0'):
     RGA = RGA100('serial', port, 28800)    
     print(RGA.reset())
     RGA.filament.turn_off()
     RGA.disconnect()
     return 0
 
-def degas_RGA(port='/dev/ttyUSB3'):
+def degas_RGA(port='/dev/ttyUSB0'):
+    
     RGA = RGA100('serial', port, 28800)    
+    print('starting degas')
     RGA.filament.start_degas(3)
     RGA.filament.turn_off()
     RGA.disconnect()
@@ -89,4 +91,4 @@ if __name__ == '__main__':
 
     #reset_RGA()
     #degas_RGA()
-    read_SRS_RGA()
+    print(read_SRS_RGA(port='/dev/ttyUSB3'))

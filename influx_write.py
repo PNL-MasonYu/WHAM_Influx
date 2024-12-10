@@ -10,6 +10,9 @@ from read_ion_gauge import read_ion_gauge
 from NBI_ion_gauge import read_NBI_gauge_rp
 from shot_number import read_shot_number
 from osaka_turbo_controller import read_osaka_turbo
+from Diris_A1_power_monitor import read_diris
+from lakeshore_temperature import read_lakeshore_temperature
+from AMI_1720_liquid_level import read_AMI1720_NBI
 
 from ssh_logging import remote_logging
 from influxdb_client import InfluxDBClient, ReturnStatement
@@ -58,7 +61,7 @@ def write_to_DB(executor, write_api, org):
     # Comment out things that does not need to be logged
     
     
-    executor.submit(persistent_write_to_db, write_api, "helium", org, read_Lakeshore_Kelvin, "lakeshore_NBI")
+    executor.submit(persistent_write_to_db, write_api, "helium", org, read_lakeshore_temperature, "/dev/ttyUSB1")
     #executor.submit(persistent_write_to_db, write_api, "helium", org, read_Cryomech_Compressor, 'C:/Users/WHAMuser/Desktop/Influxdb Data Logging/CPTLog.txt')
     #executor.submit(persistent_write_to_db, write_api, "helium", org, read_LN2_scale, 'LN2_SCALE')
     #executor.submit(persistent_write_to_db, write_api, "Vacuum", org, read_Extorr_RGA, "E:\RGALogs")
@@ -81,7 +84,9 @@ def write_to_DB(executor, write_api, org):
     executor.submit(persistent_write_to_db, write_api, "Vacuum", org, read_osaka_turbo, "/dev/ttyUSB4")
     executor.submit(persistent_write_to_db, write_api, "Vacuum", org, read_osaka_turbo, "/dev/ttyUSB5")
     executor.submit(persistent_write_to_db, write_api, "Vacuum", org, read_osaka_turbo, "/dev/ttyUSB6")
-    #executor.submit(persistent_write_to_db, write_api, "System", org, read_shot_number, "andrew.psl.wisc.edu")
+    executor.submit(persistent_write_to_db, write_api, "System", org, read_shot_number, "andrew.psl.wisc.edu")
+    executor.submit(persistent_write_to_db, write_api, "helium", org, read_diris, "192.168.130.222")
+    executor.submit(persistent_write_to_db, write_api, "helium", org, read_AMI1720_NBI, "192.168.130.227")
 
     return
 

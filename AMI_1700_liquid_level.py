@@ -6,7 +6,7 @@ import traceback
 from telnetlib import Telnet
 
 def telnet_client(host: str, port: int, command:str):
-    tn = Telnet(host, port)
+    tn = Telnet(host, port, timeout=3)
     #print(f"connected to ({host}, {port})")
     command = bytes(command, "ASCII")
     tn.write(command)
@@ -25,7 +25,7 @@ def read_AMI_Telnet(IP="192.168.130.200"):
     msg.append("AMI_1700_"+IP_digit+",sensor=N2_lvl n2_percent=" + LN2_lvl)
     msg.append("AMI_1700_"+IP_digit+",sensor=HE_lvl he_percent=" + HE_lvl)
     time.sleep(1.0)
-    print(msg)
+    #print(msg)
     return msg
 
 if __name__ == "__main__":

@@ -9,7 +9,7 @@ def read_baratron_rp(IP="rp-f0908c.local"):
     # zero offset with CFS magnets at full field
     #zero_offset = 2.883e-3
     # zero offset with zero field
-    zero_offset = -0.89e-3
+    zero_offset = 0
     
     DEC = 1
     # connect to RP at the provided IP

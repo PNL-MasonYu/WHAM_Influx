@@ -37,7 +37,7 @@ def read_NBI_gauge_rp(IP="rp-f0bd65.local"):
     buff_string = buff_string.strip('{}\n\r').replace("  ", "").split(',')
     buff1 = list(map(float, buff_string))
     average_voltage = np.average(buff1)
-    log_pressure = np.power(10, average_voltage-11) * sensitivity
+    log_pressure = np.power(10, average_voltage-10) * sensitivity
 
     msg = []
     msg.append("ION_GAUGE,GAUGE=NBI_GAUGE voltage_log={:.8f}".format(average_voltage))

@@ -51,4 +51,4 @@ def read_osaka_turbo(port='/dev/ttyUSB5'):
 
 if __name__ == '__main__':
 
-    read_osaka_turbo()
+    print(read_osaka_turbo(port='/dev/ttyUSB0'))
